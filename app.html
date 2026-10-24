@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thanos Snap</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="base" class="layer"></canvas>
+    <canvas id="fx" class="layer"></canvas>
+    <div id="flash"></div>
+  </div>
+  <video id="video" playsinline muted hidden></video>
+
+  <div id="hud">
+    <div class="pill"><span class="dot" id="d-cam"></span>Camera</div>
+    <div class="pill"><span class="dot" id="d-seg"></span><span id="t-seg">Calibrating</span></div>
+    <div class="pill"><span class="dot" id="d-hand"></span>Hand</div>
+    <div class="pill"><span class="dot" id="d-mic"></span>Mic</div>
+    <div class="pill"><span class="dot" id="d-inp"></span>Inpainter</div>
+    <div class="pill"><span class="dot" id="d-meet"></span>Meet</div>
+  </div>
+
+  <div id="hint"></div>
+  <div id="keys">Space snap &middot; R reset &middot; B backdrop &middot; C colour &middot; I invert mask &middot; H hide HUD &middot; F fullscreen</div>
+  <div id="error" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

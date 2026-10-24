@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Thanos Snap",
+  "version": "1.2.0",
+  "minimum_chrome_version": "111",
+  "description": "Snap your fingers on camera and watch yourself turn to dust. Works as your Google Meet camera.",
+  "permissions": ["storage", "offscreen"],
+  "action": {
+    "default_title": "Open Thanos Snap",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png" }
+  },
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["meet-inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://meet.google.com/*"],
+      "js": ["meet-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}
