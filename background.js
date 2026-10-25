@@ -73,6 +73,12 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
+// Keyboard shortcuts (chrome://extensions/shortcuts) work while the Meet tab is focused.
+chrome.commands.onCommand.addListener((cmd) => {
+  if (source) source.postMessage({ type: 'command', cmd });
+  else log(`command ${cmd} ignored: no source`);
+});
+
 function toSource(msg) {
   if (source) {
     try { source.postMessage(msg); log(`-> source: ${msg.type} sid=${msg.sid} from=${msg.from}`); return; }

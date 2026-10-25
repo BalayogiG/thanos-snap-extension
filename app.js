@@ -16,8 +16,11 @@ const RELEASE = 0.7;        // ...and the distance that counts as released
 const CURL = 1.5;           // middle tip to wrist / hand size when snapped into the palm
 const SNAP_WINDOW = 250;    // ms between pinch and release for a snap
 const COOLDOWN = 1500;      // ms between triggers
+// Label MediaPipe gives the user's real right hand on our raw (unmirrored) frame. Flip to 'Left' if the wrong hand is tracked.
+const RIGHT_HAND = 'Right';
 const GRID_W = 48, GRID_H = 27;
 const COLORS = ['#14161c', '#0f7a4d', '#27386b', '#d8d3c6'];
+const PICTURES = ['sunset', 'space', 'forest', 'office', 'beach', 'city', 'snow', 'abstract'];
 
 const S = {
   mode: 'boot',             // boot | live | charging | dusting | gone
@@ -75,7 +78,7 @@ async function loadModels() {
     hands = await HandLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: 'models/hand_landmarker.task', delegate },
       runningMode: 'VIDEO',
-      numHands: 1,
+      numHands: 2,
     });
     segmenter = await ImageSegmenter.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: 'models/selfie_segmenter.tflite', delegate },
@@ -300,6 +303,28 @@ function matchExposure() {
   if (sf < 300) return;
   const target = Math.min(1.4, Math.max(0.7, sv / sf));
   gain += (target - gain) * 0.1;
+}
+
+// ---- backdrops: flat colours first, then pictures (bundled, or dropped onto the window)
+const pictures = PICTURES.map((n) => loadPicture(`backgrounds/${n}.svg`));
+function loadPicture(src) {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+const BACKDROPS = () => COLORS.length + pictures.length;
+
+function drawBackdrop() {
+  const pic = pictures[S.colorIdx - COLORS.length];
+  if (!pic) {
+    bctx.fillStyle = COLORS[S.colorIdx];
+    bctx.fillRect(0, 0, S.W, S.H);
+    return;
+  }
+  if (!pic.naturalWidth) { bctx.fillStyle = COLORS[0]; bctx.fillRect(0, 0, S.W, S.H); return; }
+  const k = Math.max(S.W / pic.naturalWidth, S.H / pic.naturalHeight);   // cover-fit
+  const w = pic.naturalWidth * k, h = pic.naturalHeight * k;
+  bctx.drawImage(pic, (S.W - w) / 2, (S.H - h) / 2, w, h);
 }
 
 // Flat-colour mode: the live person, cut out of the video.
@@ -573,9 +598,10 @@ function process(now) {
     const th = performance.now();
     const hr = hands.detectForVideo(mlCanvas, now);
     perf.hand += performance.now() - th;
-    S.handSeen = hr.landmarks.length > 0;
-    S.wrist = S.handSeen ? hr.landmarks[0][0] : null;
-    if (detectSnap(hr.landmarks, now, now - lastSpikeT < 120)) trigger();
+    const right = hr.landmarks.filter((_, i) => hr.handedness[i][0].categoryName === RIGHT_HAND);
+    S.handSeen = right.length > 0;
+    S.wrist = S.handSeen ? right[0][0] : null;
+    if (detectSnap(right, now, now - lastSpikeT < 120)) trigger();
   }
 
   const ts = performance.now();
@@ -594,8 +620,7 @@ function process(now) {
 
 function renderScene(now) {
   if (S.solid && S.maskReady) {
-    bctx.fillStyle = COLORS[S.colorIdx];
-    bctx.fillRect(0, 0, S.W, S.H);
+    drawBackdrop();
     if (S.mode === 'live') bctx.drawImage(cmpCanvas, 0, 0);
   } else {
     bctx.drawImage(video, 0, 0, S.W, S.H);
@@ -688,8 +713,11 @@ function connectSource() {
   if (!(globalThis.chrome && chrome.runtime && chrome.runtime.id)) return;
   const port = chrome.runtime.connect({ name: 'source' });
   sourcePort = port;
+  // The background worker sleeps and drops this port; reconnect so shortcuts and Meet keep working.
+  port.onDisconnect.addListener(() => { if (sourcePort === port) setTimeout(connectSource, 500); });
   report('replaceTrack-v3 ready');
   port.onMessage.addListener(async (m) => {
+    if (m.type === 'command') { COMMANDS[m.cmd]?.(); return; }
     report(`got ${m.type} sid=${m.sid} from=${m.from}`);
     const key = `${m.from}:${m.sid}`;
     if (m.type === 'bye') { closeSession(key); return; }
@@ -764,18 +792,30 @@ function updateHud() {
 // ---- input ----------------------------------------------------------------
 function resumeAudio() { if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume(); }
 addEventListener('pointerdown', resumeAudio);
+function toggleRoom() {
+  S.solid = !S.solid;
+  if (!S.solid && !inpainter) loadInpainter();   // loaded on demand: it is heavy
+  reset();
+  setHint(S.solid ? 'Flat-colour backdrop' : 'Real room (AI inpainting)', 2000);
+}
+
+function nextBackdrop() {
+  S.colorIdx = (S.colorIdx + 1) % BACKDROPS();
+  if (!S.solid) { S.solid = true; reset(); }
+  setHint(S.colorIdx < COLORS.length ? 'Colour backdrop' : 'Picture backdrop', 1500);
+}
+
+// Chrome-level shortcuts (manifest "commands"), relayed by the background worker so they
+// work while the Meet tab has focus.
+const COMMANDS = { reset: () => reset(), 'next-backdrop': nextBackdrop, 'toggle-room': toggleRoom };
+
 addEventListener('keydown', (e) => {
   resumeAudio();
   const k = e.key.toLowerCase();
   if (k === ' ') { e.preventDefault(); trigger(); }
   else if (k === 'r') reset();
-  else if (k === 'b') {
-    S.solid = !S.solid;
-    if (!S.solid && !inpainter) loadInpainter();   // loaded on demand: it is heavy
-    reset();
-    setHint(S.solid ? 'Flat-colour backdrop' : 'Real room (AI inpainting)', 2000);
-  }
-  else if (k === 'c') { S.colorIdx = (S.colorIdx + 1) % COLORS.length; }
+  else if (k === 'b') toggleRoom();
+  else if (k === 'c') nextBackdrop();
   else if (k === 'h') document.body.classList.toggle('hud-off');
   else if (k === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
   else if (k === 'i' && S.personNZ !== null) {
@@ -784,6 +824,18 @@ addEventListener('keydown', (e) => {
     pctx.clearRect(0, 0, S.W, S.H);
     reset();
   }
+});
+
+// Drop an image onto the window to use it as a backdrop.
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => {
+  e.preventDefault();
+  const f = [...e.dataTransfer.files].find((x) => x.type.startsWith('image/'));
+  if (!f) return;
+  pictures.push(loadPicture(URL.createObjectURL(f)));
+  S.colorIdx = COLORS.length + pictures.length - 1;
+  if (!S.solid) { S.solid = true; reset(); }
+  setHint('Picture backdrop', 1500);
 });
 
 // ---- boot -----------------------------------------------------------------

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+<defs>
+<linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd8e8"/><stop offset="1" stop-color="#e8f5e0"/></linearGradient>
+</defs>
+<rect width="1280" height="720" fill="url(#s)"/>
+<path d="M0 400 Q200 300 400 380 T800 360 T1280 370 V720 H0Z" fill="#9cc7a0"/>
+<path d="M0 460 Q260 380 520 450 T1040 430 T1280 450 V720 H0Z" fill="#6aa876"/>
+<g fill="#3f7d52">
+<path d="M80 560 l60 -230 l60 230z"/><path d="M200 580 l70 -280 l70 280z"/><path d="M340 560 l55 -200 l55 200z"/><path d="M900 570 l65 -250 l65 250z"/><path d="M1040 560 l55 -210 l55 210z"/><path d="M1160 590 l70 -270 l70 270z"/>
+</g>
+<path d="M0 620 Q320 560 640 610 T1280 600 V720 H0Z" fill="#2f6a43"/>
+<path d="M0 680 Q400 640 800 675 T1280 665 V720 H0Z" fill="#1f4d31"/>
+</svg>

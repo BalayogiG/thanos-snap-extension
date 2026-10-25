@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4cb8f0"/><stop offset="1" stop-color="#d4f1fb"/></linearGradient>
+<linearGradient id="o" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b8fc4"/><stop offset="1" stop-color="#5fd0d8"/></linearGradient></defs>
+<rect width="1280" height="720" fill="url(#s)"/>
+<circle cx="1000" cy="150" r="60" fill="#fff6cf"/>
+<g fill="#fff" opacity=".85"><ellipse cx="250" cy="130" rx="110" ry="26"/><ellipse cx="320" cy="115" rx="70" ry="24"/><ellipse cx="680" cy="210" rx="130" ry="24"/></g>
+<rect y="360" width="1280" height="190" fill="url(#o)"/>
+<path d="M0 420 Q160 405 320 420 T640 420 T960 420 T1280 420" stroke="#fff" stroke-opacity=".5" stroke-width="4" fill="none"/>
+<path d="M0 480 Q200 462 400 480 T800 480 T1280 480" stroke="#fff" stroke-opacity=".4" stroke-width="4" fill="none"/>
+<path d="M0 540 Q300 500 640 540 T1280 530 V720 H0Z" fill="#f2dfae"/>
+<path d="M0 620 Q400 580 800 625 T1280 610 V720 H0Z" fill="#e6cd92"/>
+<path d="M130 640 Q150 500 200 420" stroke="#6b4a2b" stroke-width="14" fill="none"/>
+<g fill="#2f8a4f"><path d="M200 420 Q130 380 80 430 Q140 400 200 420Z"/><path d="M200 420 Q250 360 320 390 Q250 385 200 420Z"/><path d="M200 420 Q190 350 140 330 Q190 360 200 420Z"/><path d="M200 420 Q260 430 290 480 Q240 440 200 420Z"/></g>
+</svg>
