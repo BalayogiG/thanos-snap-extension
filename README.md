@@ -38,7 +38,7 @@ Work when the Thanos Snap window is focused.
 | R | Reset (bring yourself back) |
 | B | Switch between flat/picture backdrop and real room |
 | C | Next backdrop (colours, then pictures) |
-| V | Cycle video backdrops (`video_backgrounds/`, list in `BG_VIDEOS` in `app.js`); Ctrl+Shift+4 from any tab, e.g. Meet |
+| V | Cycle video backdrops (`video_backgrounds/`, list in `BG_VIDEOS` in `app.js`). From Meet, use Ctrl+Shift+4 (see below) |
 | I | Invert mask (if the wrong side is treated as "person") |
 | H | Hide HUD |
 | F | Fullscreen |
@@ -66,6 +66,7 @@ Chrome extension commands work while the Meet tab is focused, as long as the Tha
 | Ctrl+Shift+1 | Reset |
 | Ctrl+Shift+2 | Next backdrop |
 | Ctrl+Shift+3 | Switch between flat/picture backdrop and real room |
+| Ctrl+Shift+4 | Cycle video backdrops (`video_backgrounds/`; after the last video it returns to the flat colour) |
 
 These are the defaults. Chrome leaves a default unassigned if another extension already uses it. If a shortcut
 does nothing, open `chrome://extensions/shortcuts`, find **Thanos Snap**, and set your own keys (they need
