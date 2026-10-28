@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Thanos Snap",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "minimum_chrome_version": "111",
   "description": "Snap your fingers on camera and watch yourself turn to dust. Works as your Google Meet camera.",
   "permissions": ["storage", "offscreen"],
@@ -12,7 +12,8 @@
   "commands": {
     "reset": { "suggested_key": { "default": "Ctrl+Shift+1" }, "description": "Reset (bring yourself back)" },
     "next-backdrop": { "suggested_key": { "default": "Ctrl+Shift+2" }, "description": "Next backdrop (colours, then pictures)" },
-    "toggle-room": { "suggested_key": { "default": "Ctrl+Shift+3" }, "description": "Toggle flat backdrop / real room" }
+    "toggle-room": { "suggested_key": { "default": "Ctrl+Shift+3" }, "description": "Toggle flat backdrop / real room" },
+    "cycle-video": { "suggested_key": { "default": "Ctrl+Shift+V", "mac": "Command+Shift+V" }, "description": "Cycle video backdrops" }
   },
   "background": { "service_worker": "background.js" },
   "content_scripts": [

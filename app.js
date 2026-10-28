@@ -21,6 +21,8 @@ const RIGHT_HAND = 'Right';
 const GRID_W = 48, GRID_H = 27;
 const COLORS = ['#14161c', '#0f7a4d', '#27386b', '#d8d3c6'];
 const PICTURES = ['sunset', 'space', 'forest', 'office', 'beach', 'city', 'snow', 'abstract'];
+// Extensions can't list their own folder, so new backdrop videos get added here.
+const BG_VIDEOS = ['video_backgrounds/one.mp4', 'video_backgrounds/two.mp4'];
 
 const S = {
   mode: 'boot',             // boot | live | charging | dusting | gone
@@ -34,7 +36,9 @@ const S = {
   frame: 0,
   solid: true,              // flat-colour backdrop instead of the real room
   colorIdx: 0,
+  bgVideoIdx: -1,           // index into BG_VIDEOS, -1 = plain colour
 };
+const bgVideo = Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true });
 
 // ---- offscreen canvases ---------------------------------------------------
 const mk = (opts) => Object.assign(document.createElement('canvas'), opts);
@@ -618,9 +622,24 @@ function process(now) {
   S.frame++;
 }
 
+// Fill the stage with the backdrop video, cropping to keep its aspect ratio.
+function drawCover(v) {
+  const k = Math.max(S.W / v.videoWidth, S.H / v.videoHeight);
+  const w = v.videoWidth * k, h = v.videoHeight * k;
+  bctx.drawImage(v, (S.W - w) / 2, (S.H - h) / 2, w, h);
+}
+
+function setBgVideo(idx) {
+  S.bgVideoIdx = idx;
+  if (idx < 0) { bgVideo.pause(); return; }
+  bgVideo.src = BG_VIDEOS[idx];
+  bgVideo.play().catch(() => {});
+}
+
 function renderScene(now) {
   if (S.solid && S.maskReady) {
-    drawBackdrop();
+    if (S.bgVideoIdx >= 0 && bgVideo.readyState >= 2) drawCover(bgVideo);
+    else drawBackdrop();
     if (S.mode === 'live') bctx.drawImage(cmpCanvas, 0, 0);
   } else {
     bctx.drawImage(video, 0, 0, S.W, S.H);
@@ -789,6 +808,15 @@ function updateHud() {
   else if ((S.mode === 'dusting' || S.mode === 'charging') && !hintTimer) $('hint').textContent = '';
 }
 
+// Cycle video backdrops; after the last one, fall back to the plain colour.
+function cycleVideoBackdrop() {
+  S.solid = true;
+  const next = S.bgVideoIdx + 1 >= BG_VIDEOS.length ? -1 : S.bgVideoIdx + 1;
+  setBgVideo(next);
+  reset();
+  setHint(next < 0 ? 'Flat-colour backdrop' : `Video backdrop ${next + 1}/${BG_VIDEOS.length}`, 2000);
+}
+
 // ---- input ----------------------------------------------------------------
 function resumeAudio() { if (audio.ctx && audio.ctx.state !== 'running') audio.ctx.resume(); }
 addEventListener('pointerdown', resumeAudio);
@@ -807,13 +835,14 @@ function nextBackdrop() {
 
 // Chrome-level shortcuts (manifest "commands"), relayed by the background worker so they
 // work while the Meet tab has focus.
-const COMMANDS = { reset: () => reset(), 'next-backdrop': nextBackdrop, 'toggle-room': toggleRoom };
+const COMMANDS = { reset: () => reset(), 'next-backdrop': nextBackdrop, 'toggle-room': toggleRoom, 'cycle-video': cycleVideoBackdrop };
 
 addEventListener('keydown', (e) => {
   resumeAudio();
   const k = e.key.toLowerCase();
   if (k === ' ') { e.preventDefault(); trigger(); }
   else if (k === 'r') reset();
+  else if (k === 'v') cycleVideoBackdrop();
   else if (k === 'b') toggleRoom();
   else if (k === 'c') nextBackdrop();
   else if (k === 'h') document.body.classList.toggle('hud-off');

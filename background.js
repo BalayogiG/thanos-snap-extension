@@ -13,17 +13,23 @@ const queue = [];
 const getWindowId = async () => (await chrome.storage.session.get('windowId')).windowId ?? null;
 const setWindowId = (windowId) => chrome.storage.session.set({ windowId });
 
-async function ensureWindow(focused) {
-  const id = await getWindowId();
-  if (id !== null) {
-    try {
-      await chrome.windows.get(id);
-      if (focused) await chrome.windows.update(id, { focused: true });
-      return;
-    } catch { /* window is gone */ }
-  }
-  const w = await chrome.windows.create({ url: PAGE, type: 'popup', width: 980, height: 640, focused });
-  await setWindowId(w.id);
+// Calls are chained so concurrent requests can't each create their own popup.
+let windowLock = Promise.resolve();
+function ensureWindow(focused) {
+  const run = windowLock.then(async () => {
+    const id = await getWindowId();
+    if (id !== null) {
+      try {
+        await chrome.windows.get(id);
+        if (focused) await chrome.windows.update(id, { focused: true });
+        return;
+      } catch { /* window is gone */ }
+    }
+    const w = await chrome.windows.create({ url: PAGE, type: 'popup', width: 980, height: 640, focused });
+    await setWindowId(w.id);
+  });
+  windowLock = run.catch(() => {});
+  return run;
 }
 
 chrome.windows.onRemoved.addListener(async (id) => {
@@ -34,7 +40,14 @@ chrome.windows.onRemoved.addListener(async (id) => {
 // visible window instead (closing the hidden one so only one page owns the camera).
 let offscreenFailed = false;
 
-async function ensureSource() {
+let sourceLock = Promise.resolve();
+function ensureSource() {
+  const run = sourceLock.then(startSource);
+  sourceLock = run.catch(() => {});
+  return run;
+}
+
+async function startSource() {
   const id = await getWindowId();
   if (id !== null) {
     try { await chrome.windows.get(id); return; } catch { /* window is gone */ }
