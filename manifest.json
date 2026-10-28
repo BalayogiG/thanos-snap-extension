@@ -13,7 +13,7 @@
     "reset": { "suggested_key": { "default": "Ctrl+Shift+1" }, "description": "Reset (bring yourself back)" },
     "next-backdrop": { "suggested_key": { "default": "Ctrl+Shift+2" }, "description": "Next backdrop (colours, then pictures)" },
     "toggle-room": { "suggested_key": { "default": "Ctrl+Shift+3" }, "description": "Toggle flat backdrop / real room" },
-    "cycle-video": { "suggested_key": { "default": "Ctrl+Shift+V", "mac": "Command+Shift+V" }, "description": "Cycle video backdrops" }
+    "cycle-video": { "suggested_key": { "default": "Ctrl+Shift+4" }, "description": "Cycle video backdrops" }
   },
   "background": { "service_worker": "background.js" },
   "content_scripts": [

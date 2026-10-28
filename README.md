@@ -38,7 +38,7 @@ Work when the Thanos Snap window is focused.
 | R | Reset (bring yourself back) |
 | B | Switch between flat/picture backdrop and real room |
 | C | Next backdrop (colours, then pictures) |
-| V | Cycle video backdrops (`video_backgrounds/`, list in `BG_VIDEOS` in `app.js`); Ctrl+Shift+V from any tab, e.g. Meet |
+| V | Cycle video backdrops (`video_backgrounds/`, list in `BG_VIDEOS` in `app.js`); Ctrl+Shift+4 from any tab, e.g. Meet |
 | I | Invert mask (if the wrong side is treated as "person") |
 | H | Hide HUD |
 | F | Fullscreen |
