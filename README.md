@@ -20,6 +20,23 @@ and snap your fingers: you turn to dust and blow away.
   Space triggers it manually.
 - Your silhouette becomes ~45k WebGL points that dissolve left-to-right and drift away.
 
+## Witch face (Halloween)
+Press `M` (or `Ctrl+Shift+5` in Meet) to become the witch: her face from `faces/witch.jpg` and her hat from
+`faces/witch-hat.png`. `face_landmarker` (MediaPipe) finds 478
+points on the witch once and on you every frame; the witch's face is cut into triangles over those points
+and stretched onto yours in WebGL, so it follows your head, blinks and eyes. The mouth opening is left out,
+so your real mouth shows when you talk, and the edge of the face fades into your skin. The hat is pinned to
+your forehead and temples, so it tilts, scales and moves with your head. Snap with it on and the witch,
+hat included, turns to dust.
+
+She's animated (`spooky.js`): her eyes pulse with a green glow (dark when you blink), ink drips down
+from under her eyes and fades, green mist rises off the hat, and every few seconds she glitches:
+the face tears into shifted bands, flickers and flashes ghostly green. The model loads on first use.
+
+To use another face, replace `faces/witch.jpg` (or change `LOOK` in `app.js`) with a clear, front-facing,
+well-lit portrait cropped around the head. Drop `hat` from `LOOK` for no hat, or give a transparent PNG and
+where its top-left corner sits in the face image's pixels.
+
 ## Backdrops
 `C` cycles through four flat colours, then the pictures in `backgrounds/`
 (sunset, space, forest, office, beach, city, snow, abstract). Pictures are cover-fitted to the frame.
@@ -38,6 +55,7 @@ Work when the Thanos Snap window is focused.
 | R | Reset (bring yourself back) |
 | B | Switch between flat/picture backdrop and real room |
 | C | Next backdrop (colours, then pictures) |
+| M | Witch (face and hat) on/off |
 | V | Cycle video backdrops (`video_backgrounds/`, list in `BG_VIDEOS` in `app.js`). From Meet, use Ctrl+Shift+4 (see below) |
 | I | Invert mask (if the wrong side is treated as "person") |
 | H | Hide HUD |
@@ -45,7 +63,7 @@ Work when the Thanos Snap window is focused.
 
 ## Bundled files
 `lib/` is `@mediapipe/tasks-vision` plus `onnxruntime-web` (wasm build); `models/` holds the Google-hosted
-`hand_landmarker.task` and `selfie_segmenter.tflite`, and MI-GAN `migan.onnx` (MIT, Picsart AI Research). Remote code is not allowed in MV3, so they are local.
+`hand_landmarker.task`, `face_landmarker.task` and `selfie_segmenter.tflite`, and MI-GAN `migan.onnx` (MIT, Picsart AI Research). Remote code is not allowed in MV3, so they are local.
 
 ## Google Meet
 Join a call at meet.google.com with the extension loaded. Meet's camera list gets an extra
@@ -67,6 +85,13 @@ Chrome extension commands work while the Meet tab is focused, as long as the Tha
 | Ctrl+Shift+2 | Next backdrop |
 | Ctrl+Shift+3 | Switch between flat/picture backdrop and real room |
 | Ctrl+Shift+4 | Cycle video backdrops (`video_backgrounds/`; after the last video it returns to the flat colour) |
+| Ctrl+Shift+5 | Witch (face and hat) on/off |
+
+Chrome allows an extension only four default shortcuts, so `Ctrl+Shift+5` is caught by the Meet page itself
+(`meet-bridge.js`) rather than by Chrome. It works only while the Meet tab is focused, and it can't be changed
+at `chrome://extensions/shortcuts`. That page does list **Toggle the Halloween witch** with no key; give it one
+there if you want a shortcut that works everywhere.
+
 
 These are the defaults. Chrome leaves a default unassigned if another extension already uses it. If a shortcut
 does nothing, open `chrome://extensions/shortcuts`, find **Thanos Snap**, and set your own keys (they need

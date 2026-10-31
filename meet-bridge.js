@@ -16,3 +16,15 @@ window.addEventListener('message', (e) => {
     port.postMessage(e.data.msg);
   } catch { /* extension context invalidated */ }
 });
+
+// Ctrl+Shift+5 in Meet toggles the witch. Chrome allows an extension only four default
+// shortcuts (taken by Ctrl+Shift+1-4), so this one is caught on the page instead.
+window.addEventListener('keydown', (e) => {
+  if (!(e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Digit5') || e.repeat) return;
+  e.preventDefault();
+  e.stopPropagation();
+  try {
+    if (!port) connect();
+    port.postMessage({ type: 'command', cmd: 'toggle-face' });
+  } catch { /* extension context invalidated */ }
+}, true);

@@ -88,8 +88,8 @@ chrome.runtime.onMessage.addListener((msg) => {
 
 // Keyboard shortcuts (chrome://extensions/shortcuts) work while the Meet tab is focused.
 chrome.commands.onCommand.addListener((cmd) => {
-  if (source) source.postMessage({ type: 'command', cmd });
-  else log(`command ${cmd} ignored: no source`);
+  log(`chrome shortcut ${cmd}${source ? '' : ' ignored: no source'}`);
+  source?.postMessage({ type: 'command', cmd });
 });
 
 function toSource(msg) {
@@ -119,6 +119,11 @@ chrome.runtime.onConnect.addListener((port) => {
     meets.set(id, port);
     log(`meet port ${id} connected`);
     port.onMessage.addListener((m) => {
+      if (m.type === 'command') {   // page-level shortcut; only matters if the camera is running
+        log(`page shortcut ${m.cmd}${source ? '' : ' ignored: no source'}`);
+        source?.postMessage(m);
+        return;
+      }
       if (m.type === 'ping') { port.postMessage({ type: 'pong', sid: m.sid, source: !!source, queued: queue.length, logs }); return; }
       toSource({ ...m, from: id });
     });
