@@ -1,5 +1,6 @@
 import { FilesetResolver, HandLandmarker, ImageSegmenter } from './lib/vision_bundle.mjs';
 import * as ort from './lib/ort/ort.wasm.min.mjs';
+import { createFaceSwap } from './face.js';
 
 const $ = (id) => document.getElementById(id);
 const video = $('video');
@@ -23,6 +24,8 @@ const COLORS = ['#14161c', '#0f7a4d', '#27386b', '#d8d3c6'];
 const PICTURES = ['sunset', 'space', 'forest', 'office', 'beach', 'city', 'snow', 'abstract'];
 // Extensions can't list their own folder, so new backdrop videos get added here.
 const BG_VIDEOS = ['video_backgrounds/one.mp4', 'video_backgrounds/two.mp4'];
+// Hat x/y: where its top-left sits in the face image's pixels (brim across the forehead).
+const LOOK = { face: 'faces/witch.jpg', hat: { src: 'faces/witch-hat.png', x: -33, y: -313 } };
 
 const S = {
   mode: 'boot',             // boot | live | charging | dusting | gone
@@ -37,6 +40,7 @@ const S = {
   solid: true,              // flat-colour backdrop instead of the real room
   colorIdx: 0,
   bgVideoIdx: -1,           // index into BG_VIDEOS, -1 = plain colour
+  faceOn: false,            // witch face swap
 };
 const bgVideo = Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true });
 
@@ -74,10 +78,10 @@ const covered = new Uint8Array(GRID_W * GRID_H);
 let coveredCount = 0;
 
 // ---- ML -------------------------------------------------------------------
-let hands, segmenter;
+let hands, segmenter, fileset;
 
 async function loadModels() {
-  const fileset = await FilesetResolver.forVisionTasks('lib/wasm');
+  fileset = await FilesetResolver.forVisionTasks('lib/wasm');
   const make = async (delegate) => {
     hands = await HandLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: 'models/hand_landmarker.task', delegate },
@@ -398,6 +402,23 @@ async function inpaintFrame() {
   fctx.putImageData(res, 0, 0);
 }
 
+// ---- face swap ------------------------------------------------------------
+let faceSwap = null, faceLoading = null;
+
+function loadFaceSwap() {
+  const t0 = performance.now();
+  faceLoading ??= createFaceSwap(fileset, S.delegate === 'GPU' ? 'GPU' : 'CPU', LOOK, S.W, S.H, (t) => report(`witch: ${t}`))
+    .then((f) => { faceSwap = f; report(`witch loaded in ${(performance.now() - t0).toFixed(0)}ms`); })
+    .catch((e) => {
+      console.warn('Face swap failed to load', e);
+      report(`witch failed to load: ${e && e.message ? e.message : e}`);
+      faceLoading = null;
+      S.faceOn = false;
+      setHint('Witch face failed to load.', 2500);
+    });
+  return faceLoading;
+}
+
 // ---- particles (WebGL) ----------------------------------------------------
 const gl = fxCanvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
 let prog, buf, loc, particleCount = 0;
@@ -466,9 +487,12 @@ let pointSize = 4;
 function buildParticles() {
   const { W, H } = S;
   sctx.drawImage(video, 0, 0, W, H);
+  if (S.faceOn && faceSwap) faceSwap.draw(sctx);   // the witch turns to dust too
   const px = sctx.getImageData(0, 0, W, H).data;
   const md = maskImg.data, mw = maskImg.width, mh = maskImg.height;
-  const isPerson = (x, y) => md[((((y / H) * mh) | 0) * mw + (((x / W) * mw) | 0)) * 4 + 3] > 0;
+  const look = S.faceOn && faceSwap ? faceSwap.pixels() : null;   // the hat sticks out past the silhouette
+  const isPerson = (x, y) => md[((((y / H) * mh) | 0) * mw + (((x / W) * mw) | 0)) * 4 + 3] > 0
+    || (look !== null && look[(y * W + x) * 4 + 3] > 128);
 
   const step = Math.min(6, Math.max(2, Math.ceil(Math.sqrt((S.personFrac * W * H) / MAX_PARTICLES))));
   pointSize = step * 1.3;
@@ -608,6 +632,12 @@ function process(now) {
     if (detectSnap(right, now, now - lastSpikeT < 120)) trigger();
   }
 
+  if (S.faceOn && faceSwap && S.mode === 'live') {
+    const tf = performance.now();
+    faceSwap.update(video, now);
+    perf.face += performance.now() - tf;
+  }
+
   const ts = performance.now();
   segmenter.segmentForVideo(mlCanvas, now, onMask);
   perf.seg += performance.now() - ts;
@@ -636,14 +666,18 @@ function setBgVideo(idx) {
   bgVideo.play().catch(() => {});
 }
 
+function drawFace() {
+  if (S.faceOn && faceSwap) faceSwap.draw(bctx);
+}
+
 function renderScene(now) {
   if (S.solid && S.maskReady) {
     if (S.bgVideoIdx >= 0 && bgVideo.readyState >= 2) drawCover(bgVideo);
     else drawBackdrop();
-    if (S.mode === 'live') bctx.drawImage(cmpCanvas, 0, 0);
+    if (S.mode === 'live') { bctx.drawImage(cmpCanvas, 0, 0); drawFace(); }
   } else {
     bctx.drawImage(video, 0, 0, S.W, S.H);
-    if (S.mode === 'live') return;
+    if (S.mode === 'live') { drawFace(); return; }
     if (S.maskReady) bctx.drawImage(cmpCanvas, 0, 0);
   }
   if (S.mode === 'charging') drawParticles(-1);
@@ -665,7 +699,7 @@ function render(now) {
 }
 
 let lastTick = 0;
-const perf = { t0: performance.now(), n: 0, proc: 0, procN: 0, rend: 0, maxGap: 0, hand: 0, seg: 0 };
+const perf = { t0: performance.now(), n: 0, proc: 0, procN: 0, rend: 0, maxGap: 0, hand: 0, seg: 0, face: 0 };
 function tick() {
   if (S.mode === 'boot') return;
   const now = performance.now();
@@ -685,8 +719,8 @@ function tick() {
   perf.n++;
   if (now - perf.t0 > 5000) {
     const sec = (now - perf.t0) / 1000;
-    report(`perf[${S.delegate}]: ${(perf.n / sec).toFixed(1)} fps, hand ${(perf.hand / Math.max(1, perf.procN)).toFixed(0)}ms, seg ${(perf.seg / Math.max(1, perf.procN)).toFixed(0)}ms, process ${(perf.proc / Math.max(1, perf.procN)).toFixed(0)}ms, render ${(perf.rend / perf.n).toFixed(0)}ms, max gap ${perf.maxGap.toFixed(0)}ms, ${document.visibilityState}, sessions ${sessions.size}`);
-    Object.assign(perf, { t0: now, n: 0, proc: 0, procN: 0, rend: 0, maxGap: 0, hand: 0, seg: 0 });
+    report(`perf[${S.delegate}]: ${(perf.n / sec).toFixed(1)} fps, hand ${(perf.hand / Math.max(1, perf.procN)).toFixed(0)}ms, seg ${(perf.seg / Math.max(1, perf.procN)).toFixed(0)}ms, face ${(perf.face / Math.max(1, perf.procN)).toFixed(0)}ms, process ${(perf.proc / Math.max(1, perf.procN)).toFixed(0)}ms, render ${(perf.rend / perf.n).toFixed(0)}ms, max gap ${perf.maxGap.toFixed(0)}ms, ${document.visibilityState}, sessions ${sessions.size}`);
+    Object.assign(perf, { t0: now, n: 0, proc: 0, procN: 0, rend: 0, maxGap: 0, hand: 0, seg: 0, face: 0 });
   }
 }
 
@@ -833,9 +867,17 @@ function nextBackdrop() {
   setHint(S.colorIdx < COLORS.length ? 'Colour backdrop' : 'Picture backdrop', 1500);
 }
 
+async function toggleFace(from) {
+  S.faceOn = !S.faceOn;
+  report(`witch ${S.faceOn ? 'on' : 'off'} (${from})`);
+  if (!S.faceOn) { setHint('Witch off', 1500); return; }
+  if (!faceSwap) { setHint('Summoning the witch...'); await loadFaceSwap(); }
+  if (S.faceOn) setHint('Witch on', 1500);
+}
+
 // Chrome-level shortcuts (manifest "commands"), relayed by the background worker so they
 // work while the Meet tab has focus.
-const COMMANDS = { reset: () => reset(), 'next-backdrop': nextBackdrop, 'toggle-room': toggleRoom, 'cycle-video': cycleVideoBackdrop };
+const COMMANDS = { reset: () => reset(), 'next-backdrop': nextBackdrop, 'toggle-room': toggleRoom, 'cycle-video': cycleVideoBackdrop, 'toggle-face': () => toggleFace('shortcut') };
 
 addEventListener('keydown', (e) => {
   resumeAudio();
@@ -843,6 +885,7 @@ addEventListener('keydown', (e) => {
   if (k === ' ') { e.preventDefault(); trigger(); }
   else if (k === 'r') reset();
   else if (k === 'v') cycleVideoBackdrop();
+  else if (k === 'm' && !e.repeat) toggleFace('M key');
   else if (k === 'b') toggleRoom();
   else if (k === 'c') nextBackdrop();
   else if (k === 'h') document.body.classList.toggle('hud-off');
@@ -884,7 +927,8 @@ function fail(msg) {
     await startMic();
     outStream = outCanvas.captureStream(30);
     connectSource();
-    new Worker('tick-worker.js').onmessage = tick;
+    const ticker = new Worker('tick-worker.js');
+    ticker.onmessage = () => { tick(); ticker.postMessage(0); };
     S.mode = 'live';
     $('hint').textContent = '';
     setInterval(updateHud, 250);
